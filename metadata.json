@@ -1,0 +1,5 @@
+{
+  "name": "BYOK_Copy of PRD/SDD \u0026 Architecture Consultant ",
+  "description": "An interactive tool that helps define MVP scope through consultation and automatically generates a PRD (Markdown) and System Architecture Diagram (PlantUML).",
+  "requestFramePermissions": []
+}

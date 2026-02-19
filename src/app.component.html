@@ -1,0 +1,541 @@
+@if (!isApiKeySet()) {
+  <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-300">
+      <div class="text-center mb-6">
+        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-blue-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">輸入 Gemini API Key</h2>
+        <p class="text-slate-500 mt-2 text-sm">此應用程式需要您提供 API Key 才能運作。<br>您的 Key 僅暫存於記憶體中，關閉視窗後即清除。</p>
+      </div>
+      
+      <form (submit)="submitApiKey()" class="space-y-4">
+        <div>
+          <label for="apiKey" class="block text-sm font-medium text-slate-700 mb-1">API Key</label>
+          <input 
+            type="password" 
+            id="apiKey" 
+            [(ngModel)]="apiKey" 
+            name="apiKey"
+            placeholder="AIzaSy..." 
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            required
+            autocomplete="off"
+          >
+        </div>
+        
+        <button 
+          type="submit" 
+          [disabled]="!apiKey()"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+          開始使用
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          </svg>
+        </button>
+      </form>
+      
+      <div class="mt-6 text-center text-xs text-slate-400">
+        還沒有 API Key？ <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">前往 Google AI Studio 取得</a>
+      </div>
+    </div>
+  </div>
+}
+
+<div class="flex flex-col h-full bg-white mx-auto shadow-2xl overflow-hidden transition-all duration-300" 
+     [class.w-full]="(currentView() === 'consultant' && (state() === 'finished' || state() === 'generating')) || currentView() === 'sdd'"
+     [class.max-w-[95vw]]="(currentView() === 'consultant' && (state() === 'finished' || state() === 'generating')) || currentView() === 'sdd'"
+     [class.max-w-6xl]="currentView() === 'consultant' && (state() === 'consulting' || state() === 'initial')">
+  
+  <!-- Header -->
+  <header class="bg-slate-900 text-white p-4 flex justify-between items-center flex-none">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-500 p-2 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-wide">PRD & 架構圖 & SDD</h1>
+          <p class="text-xs text-slate-400">AI Project Consultant</p>
+        </div>
+      </div>
+
+      <!-- Target Platform Dropdown -->
+      <div class="ml-6 flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5 border border-slate-700">
+        <label class="text-xs text-slate-400 font-medium">目標:</label>
+        <select 
+          [ngModel]="targetPlatform()" 
+          (ngModelChange)="targetPlatform.set($event)"
+          class="bg-transparent text-sm text-white focus:outline-none cursor-pointer min-w-[100px]">
+          @for (opt of targetOptions; track opt) {
+            <option [value]="opt" class="bg-slate-800 text-white">{{ opt }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="bg-slate-800 rounded-lg p-1 flex gap-1 text-sm ml-4">
+        <button (click)="switchView('consultant')"
+                class="px-4 py-1.5 rounded-md transition-all"
+                [class.bg-blue-600]="currentView() === 'consultant'"
+                [class.text-white]="currentView() === 'consultant'"
+                [class.text-slate-400]="currentView() !== 'consultant'"
+                [class.hover:text-slate-200]="currentView() !== 'consultant'">
+          MVP 顧問 (Chat)
+        </button>
+        <button (click)="switchView('sdd')"
+                class="px-4 py-1.5 rounded-md transition-all"
+                [class.bg-blue-600]="currentView() === 'sdd'"
+                [class.text-white]="currentView() === 'sdd'"
+                [class.text-slate-400]="currentView() !== 'sdd'"
+                [class.hover:text-slate-200]="currentView() !== 'sdd'">
+          SDD 生成器
+        </button>
+      </div>
+    </div>
+    
+    @if (currentView() === 'consultant' && state() !== 'initial') {
+      <button (click)="reset()" class="text-sm text-slate-300 hover:text-white underline">
+        重新開始對話
+      </button>
+    }
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 flex overflow-hidden relative">
+    
+    <!-- === CONSULTANT VIEW === -->
+    @if (currentView() === 'consultant') {
+      <!-- Left Panel: Chat Interface -->
+      @if (state() !== 'finished' && state() !== 'generating') {
+      <section class="flex flex-col bg-gray-50 flex-none z-10 transition-all duration-300 border-r border-gray-200 w-full"> 
+        
+        <!-- Chat History -->
+        <div #scrollContainer class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+          <div class="max-w-4xl mx-auto h-full"> 
+          
+          @if (state() === 'initial') {
+            <div class="flex flex-col items-center justify-center h-full text-center p-8 opacity-60">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mb-4 text-blue-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+              </svg>
+              <p class="text-lg font-medium text-slate-700">歡迎使用 AI 專案顧問</p>
+              <p class="text-sm mt-2">請在下方輸入您的專案想法（或上傳草圖），我將協助您釐清需求並生成 PRD 與架構圖。</p>
+            </div>
+          } @else {
+            @for (msg of messages(); track $index) {
+              <div class="flex flex-col mb-4" [class.items-end]="msg.role === 'user'" [class.items-start]="msg.role === 'model'">
+                <div class="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 text-sm shadow-sm overflow-hidden"
+                     [class.bg-blue-600]="msg.role === 'user'"
+                     [class.text-white]="msg.role === 'user'"
+                     [class.bg-white]="msg.role === 'model'"
+                     [class.text-slate-800]="msg.role === 'model'"
+                     [class.rounded-tr-none]="msg.role === 'user'"
+                     [class.rounded-tl-none]="msg.role === 'model'">
+                  
+                  @if (msg.images && msg.images.length > 0) {
+                    <div class="mb-2 grid gap-2" [class.grid-cols-2]="msg.images.length > 1" [class.grid-cols-1]="msg.images.length === 1">
+                        @for (imgUrl of msg.images; track $index) {
+                            <img [src]="imgUrl" alt="Uploaded Content" class="rounded-lg max-h-60 w-full object-cover border border-white/20">
+                        }
+                    </div>
+                  }
+
+                  <!-- Markdown Rendered Content -->
+                  <div [innerHTML]="renderMarkdown(msg.text)" 
+                       class="chat-markdown"
+                       [class.chat-markdown-light]="msg.role === 'model'"
+                       [class.chat-markdown-dark]="msg.role === 'user'"></div>
+                </div>
+                <span class="text-[10px] text-gray-400 mt-1 px-1">
+                  {{ msg.role === 'user' ? 'You' : 'Consultant' }}
+                </span>
+              </div>
+            }
+            @if (isChatLoading()) {
+              <div class="flex items-center gap-2 text-gray-400 text-xs pl-2">
+                <div class="loader w-3 h-3"></div>
+                <span>思考中...</span>
+              </div>
+            }
+          }
+          </div>
+        </div>
+
+        <!-- Chat Input Area -->
+        <div class="p-6 bg-white border-t border-gray-100">
+          <div class="max-w-4xl mx-auto w-full">
+              @if (state() === 'consulting') {
+              <div class="mb-4 flex justify-center">
+                  <button (click)="finishAndGenerate()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-5 py-2.5 rounded-full shadow-md transition-all flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
+                      </svg>
+                      討論結束，生成文件 (Generate Docs)
+                  </button>
+              </div>
+              }
+
+              <!-- Image Preview (Horizontal Scroll List) -->
+              @if (selectedImages().length > 0) {
+                <div class="mb-3 flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide animate-in slide-in-from-bottom-2 fade-in">
+                    @for (img of selectedImages(); track $index) {
+                        <div class="relative group flex-none">
+                            <img [src]="img.url" class="h-16 w-16 object-cover rounded-lg border border-gray-200 shadow-sm" alt="Preview">
+                            <button (click)="removeImage($index)" class="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full p-0.5 shadow hover:bg-red-500 transition-colors z-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+                                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                    <span class="text-xs text-slate-500 whitespace-nowrap ml-1">已選擇 {{selectedImages().length}} 張</span>
+                </div>
+              }
+
+              <!-- Gemini-style Input Container -->
+              <div class="relative bg-gray-100 rounded-[28px] p-2 flex items-end transition-colors focus-within:bg-gray-50 focus-within:shadow-md">
+                  
+                  <!-- File Input Button -->
+                  <button class="mb-1.5 ml-1.5 p-2 rounded-full hover:bg-gray-200 text-slate-500 transition-colors"
+                          (click)="fileInput.click()"
+                          [disabled]="state() === 'generating' || isChatLoading()"
+                          title="上傳圖片">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                    </svg>
+                  </button>
+                  <!-- Added 'multiple' attribute -->
+                  <input type="file" #fileInput hidden accept="image/*" multiple (change)="onImageSelected($event)">
+
+                  <textarea 
+                      #chatInput
+                      [(ngModel)]="userInput" 
+                      (input)="onInput($event)"
+                      (keydown)="handleEnter($event)"
+                      (paste)="handlePaste($event)" 
+                      [disabled]="state() === 'generating' || isChatLoading()"
+                      placeholder="輸入您的專案想法或回應..."
+                      rows="1"
+                      class="w-full bg-transparent border-none focus:ring-0 outline-none resize-none py-3.5 pl-3 pr-3 text-base text-slate-700 placeholder-slate-400 leading-relaxed max-h-[200px] min-h-[56px] scrollbar-hide"
+                  ></textarea>
+
+                  <button 
+                      (click)="state() === 'initial' ? startConsultation() : sendMessage()"
+                      [disabled]="(!userInput().trim() && selectedImages().length === 0) || state() === 'generating' || isChatLoading()"
+                      class="mb-1.5 mr-1.5 p-2.5 rounded-full bg-blue-600 text-white disabled:bg-gray-300 disabled:text-gray-500 hover:bg-blue-700 transition-all flex-none shadow-sm"
+                      [title]="state() === 'initial' ? '開始諮詢' : '發送訊息'">
+                      
+                      @if (isChatLoading()) {
+                          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      } @else {
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                              <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                          </svg>
+                      }
+                  </button>
+              </div>
+              
+              <div class="text-center mt-3 text-xs text-slate-400 select-none">
+                  按 Enter 發送，Shift + Enter 換行
+              </div>
+          </div>
+        </div>
+      </section>
+      }
+
+      <!-- Right Panel: Results -->
+      @if (state() === 'finished' || state() === 'generating') {
+        <section class="flex-1 bg-white flex flex-col min-w-0 transition-all duration-500 animate-in fade-in slide-in-from-right-10">
+          
+          @if (state() === 'generating') {
+            <div class="flex-1 flex flex-col items-center justify-center space-y-6">
+              <div class="loader w-12 h-12 border-4 border-blue-200 border-t-blue-600"></div>
+              <div class="text-center">
+                <p class="text-slate-700 font-semibold text-lg animate-pulse">{{ generationStatus() }}</p>
+                <p class="text-slate-400 text-sm mt-2">請稍候，AI 正在為您構建專業文件...</p>
+              </div>
+            </div>
+          } @else {
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 px-4 pt-4 gap-4 bg-gray-50 flex-none sticky top-0 z-20">
+              <button (click)="activeTab.set('prd')" 
+                class="pb-3 px-2 text-sm font-medium border-b-2 transition-colors"
+                [class.border-blue-600]="activeTab() === 'prd'"
+                [class.text-blue-600]="activeTab() === 'prd'"
+                [class.border-transparent]="activeTab() !== 'prd'"
+                [class.text-slate-500]="activeTab() !== 'prd'">
+                產品需求文件 (PRD)
+              </button>
+              <button (click)="activeTab.set('diagram')" 
+                class="pb-3 px-2 text-sm font-medium border-b-2 transition-colors"
+                [class.border-purple-600]="activeTab() === 'diagram'"
+                [class.text-purple-600]="activeTab() === 'diagram'"
+                [class.border-transparent]="activeTab() !== 'diagram'"
+                [class.text-slate-500]="activeTab() !== 'diagram'">
+                系統架構圖 (Architecture)
+              </button>
+              <div class="flex-1"></div>
+              <div class="pb-2 flex gap-2">
+                @if (activeTab() === 'prd') {
+                  <button (click)="copyPrd()" 
+                          class="text-xs px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
+                          [class.bg-green-100]="isCopied()"
+                          [class.text-green-700]="isCopied()"
+                          [class.bg-slate-100]="!isCopied()"
+                          [class.text-slate-600]="!isCopied()"
+                          [class.hover:bg-slate-200]="!isCopied()">
+                    {{ isCopied() ? '已複製！' : '複製 Markdown' }}
+                  </button>
+                  <button (click)="downloadPrd()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors">
+                    下載 .md
+                  </button>
+                } @else {
+                  <button (click)="downloadDiagram()" class="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors">
+                    下載 PNG
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="flex-1 overflow-hidden relative bg-white">
+              @if (activeTab() === 'prd') {
+                <div class="h-full overflow-y-auto p-8">
+                  <div class="max-w-4xl mx-auto markdown-body font-sans text-sm" [innerHTML]="prdHtml()"></div>
+                </div>
+              } @else {
+                <div class="h-full flex flex-col relative overflow-hidden bg-slate-100 select-none">
+                  <div class="flex-1 w-full h-full overflow-hidden flex items-center justify-center relative cursor-move"
+                      (mousedown)="startDrag($event)"
+                      (mousemove)="onDrag($event)"
+                      (mouseup)="endDrag()"
+                      (mouseleave)="endDrag()"
+                      (wheel)="onWheel($event)">
+                    @if (diagramUrl()) {
+                      <div [style.transform]="'translate(' + pan().x + 'px, ' + pan().y + 'px) scale(' + zoomLevel() + ')'" 
+                          class="origin-center transition-transform duration-75">
+                          <img [src]="diagramUrl()" alt="System Architecture Diagram" class="max-w-none shadow-lg bg-white p-4" draggable="false">
+                      </div>
+                    } @else {
+                      <p class="text-red-500">無法產生圖表</p>
+                    }
+                  </div>
+                  <!-- Zoom Controls -->
+                  <div class="absolute bottom-8 right-8 flex flex-col gap-2 bg-white p-2 rounded-lg shadow-lg border border-gray-200 z-10">
+                    <button (click)="zoomIn()" class="p-2 hover:bg-gray-100 rounded text-slate-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+                    </button>
+                    <button (click)="resetZoom()" class="p-2 hover:bg-gray-100 rounded text-slate-600 text-xs font-bold">100%</button>
+                    <button (click)="zoomOut()" class="p-2 hover:bg-gray-100 rounded text-slate-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H4.75A.75.75 0 0 1 4 10Z" clip-rule="evenodd" /></svg>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+    } 
+
+    <!-- === SDD GENERATOR VIEW === -->
+    @if (currentView() === 'sdd') {
+      <div class="flex flex-col md:flex-row w-full h-full bg-gray-50">
+        
+        <!-- Left Column: Input & Settings -->
+        <div class="w-full md:w-1/3 border-r border-gray-200 flex flex-col bg-white">
+          <div class="p-6 flex-1 overflow-y-auto">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">1. 提供 PRD 內容</h2>
+            
+            <!-- File Upload -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-slate-700 mb-2">上傳 .md 檔案 (可選)</label>
+              <input type="file" accept=".md" (change)="onSddFileSelected($event)" 
+                     class="block w-full text-sm text-slate-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-full file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-blue-50 file:text-blue-700
+                            hover:file:bg-blue-100 transition-colors">
+            </div>
+
+            <!-- Text Input -->
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-slate-700 mb-2">或直接貼上文字</label>
+              <textarea [(ngModel)]="sddInput" 
+                        class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono resize-none" 
+                        placeholder="請貼上您的 PRD 內容..."></textarea>
+            </div>
+
+            <h2 class="text-lg font-bold text-slate-800 mb-4">2. 選擇生成模式</h2>
+            
+            <div class="space-y-3">
+              <!-- Simplified (Default) -->
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors"
+                     [class.bg-blue-50]="sddMode() === 'simplified'"
+                     [class.border-blue-200]="sddMode() === 'simplified'">
+                <input type="radio" name="sddMode" value="simplified" [(ngModel)]="sddMode" class="mt-1 text-blue-600 focus:ring-blue-500">
+                <div>
+                  <span class="block text-sm font-medium text-slate-900">精簡型 (Simplified - 預設)</span>
+                  <span class="block text-xs text-slate-500 mt-1">
+                    <span class="font-semibold text-emerald-600">適合初學者</span>。無需複雜部署，使用 Python + SQLite 在本機運行。重點解釋架構原理與開發步驟。
+                  </span>
+                </div>
+              </label>
+
+              <!-- Comprehensive -->
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors"
+                     [class.bg-blue-50]="sddMode() === 'comprehensive'"
+                     [class.border-blue-200]="sddMode() === 'comprehensive'">
+                <input type="radio" name="sddMode" value="comprehensive" [(ngModel)]="sddMode" class="mt-1 text-blue-600 focus:ring-blue-500">
+                <div>
+                  <span class="block text-sm font-medium text-slate-900">全面型 (Comprehensive)</span>
+                  <span class="block text-xs text-slate-500 mt-1">生成完整架構與部署策略，並可透過對話微調。</span>
+                </div>
+              </label>
+
+              <!-- Specific -->
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors"
+                     [class.bg-blue-50]="sddMode() === 'specific'"
+                     [class.border-blue-200]="sddMode() === 'specific'">
+                <input type="radio" name="sddMode" value="specific" [(ngModel)]="sddMode" class="mt-1 text-blue-600 focus:ring-blue-500">
+                <div>
+                  <span class="block text-sm font-medium text-slate-900">技術棧推薦 (Recommendation)</span>
+                  <span class="block text-xs text-slate-500 mt-1">AI 先分析 PRD 並推薦適合的技術棧，經您確認後才生成 SDD。</span>
+                </div>
+              </label>
+
+              <!-- Interactive -->
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors"
+                     [class.bg-blue-50]="sddMode() === 'interactive'"
+                     [class.border-blue-200]="sddMode() === 'interactive'">
+                <input type="radio" name="sddMode" value="interactive" [(ngModel)]="sddMode" class="mt-1 text-blue-600 focus:ring-blue-500">
+                <div>
+                  <span class="block text-sm font-medium text-slate-900">漸進式詢問 (Interactive)</span>
+                  <span class="block text-xs text-slate-500 mt-1">AI 逐步分析並詢問技術決策，對話結束後生成 SDD。</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="p-6 border-t border-gray-200 bg-gray-50">
+            <button (click)="generateSdd()" 
+                    [disabled]="!sddInput().trim() || isSddGenerating()"
+                    class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium shadow-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex justify-center items-center gap-2">
+              @if (isSddGenerating()) {
+                <div class="loader w-4 h-4 border-white"></div>
+                生成中...
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                </svg>
+                {{ sddMessages().length > 0 ? '重新開始對話' : '開始生成 SDD' }}
+              }
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Output (Always Chat Style) -->
+        <div class="w-full md:w-2/3 flex flex-col h-full bg-white relative">
+          <div class="border-b border-gray-200 px-6 py-4 flex justify-between items-center bg-gray-50 flex-none z-10">
+            <h3 class="font-bold text-slate-700">
+              {{ sddMessages().length > 0 ? 'AI 架構師對話' : 'SDD 預覽' }}
+            </h3>
+            <div class="flex gap-2">
+              @if (sddResult()) {
+                <button (click)="copySdd()" 
+                        class="text-xs px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
+                        [class.bg-green-100]="isSddCopied()"
+                        [class.text-green-700]="isSddCopied()"
+                        [class.bg-white]="!isSddCopied()"
+                        [class.text-slate-600]="!isSddCopied()"
+                        [class.border]="!isSddCopied()"
+                        [class.border-gray-300]="!isSddCopied()">
+                  {{ isSddCopied() ? '已複製！' : '複製 Markdown' }}
+                </button>
+                <button (click)="downloadSdd()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors">
+                  下載 .md
+                </button>
+              }
+            </div>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto bg-white relative">
+            
+            @if (sddMessages().length === 0) {
+              <div class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mb-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+                <p>請在左側輸入 PRD 內容並點擊生成</p>
+                <p class="text-xs mt-2">生成後可與 AI 進行對話微調</p>
+              </div>
+            } @else {
+              <div class="flex flex-col h-full">
+                <!-- Chat Messages -->
+                <div #sddScrollContainer class="flex-1 overflow-y-auto p-6 space-y-6 bg-white scrollbar-hide pb-24">
+                  @for (msg of sddMessages(); track $index) {
+                    <div class="flex flex-col" [class.items-end]="msg.role === 'user'" [class.items-start]="msg.role === 'model'">
+                      <div class="max-w-[95%] rounded-2xl px-5 py-4 text-sm shadow-sm overflow-hidden"
+                           [class.bg-blue-600]="msg.role === 'user'"
+                           [class.text-white]="msg.role === 'user'"
+                           [class.bg-gray-50]="msg.role === 'model'"
+                           [class.text-slate-800]="msg.role === 'model'"
+                           [class.border]="msg.role === 'model'"
+                           [class.border-gray-100]="msg.role === 'model'">
+                        
+                        <div [innerHTML]="renderMarkdown(msg.text)" 
+                             class="chat-markdown"
+                             [class.chat-markdown-light]="msg.role === 'model'"
+                             [class.chat-markdown-dark]="msg.role === 'user'"></div>
+                      </div>
+                      <span class="text-[10px] text-gray-400 mt-1 px-1">
+                        {{ msg.role === 'user' ? 'You' : 'AI Architect' }}
+                      </span>
+                    </div>
+                  }
+                  @if (isSddGenerating()) {
+                    <div class="flex items-center gap-2 text-gray-400 text-xs pl-2">
+                      <div class="loader w-3 h-3"></div>
+                      <span>思考中...</span>
+                    </div>
+                  }
+                </div>
+
+                <!-- Interactive Input Area (Always Visible for Follow-up) -->
+                <div class="bg-white border-t border-gray-200 p-4 absolute bottom-0 left-0 right-0 z-20 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
+                  <div class="relative bg-gray-100 rounded-[24px] p-2 flex items-end transition-colors focus-within:bg-gray-50 focus-within:shadow-md">
+                    <textarea 
+                        #sddInput
+                        [(ngModel)]="sddReplyInput" 
+                        (input)="onSddInput($event)"
+                        (keydown)="handleSddEnter($event)"
+                        [disabled]="isSddGenerating()"
+                        [placeholder]="sddMode() === 'interactive' ? '回應 AI 的提問...' : '輸入指令微調 SDD (例如：更換資料庫為 MongoDB)...'"
+                        rows="1"
+                        class="w-full bg-transparent border-none focus:ring-0 outline-none resize-none py-3 pl-4 pr-3 text-sm text-slate-700 placeholder-slate-400 leading-relaxed max-h-[150px] min-h-[44px] scrollbar-hide"
+                    ></textarea>
+                    <button 
+                        (click)="sendSddReply()"
+                        [disabled]="!sddReplyInput().trim() || isSddGenerating()"
+                        class="mb-1 mr-1 p-2 rounded-full bg-blue-600 text-white disabled:bg-gray-300 disabled:text-gray-500 hover:bg-blue-700 transition-all flex-none shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                        </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

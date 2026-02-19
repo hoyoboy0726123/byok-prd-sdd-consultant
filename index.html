@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>AI PRD & Architecture Generator</title>
+    <base href="./" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* Custom Scrollbar for chat */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      
+      /* --- PRD Styling (Standard Markdown) --- */
+      .markdown-body h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.5rem; margin-top: 2rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+      .markdown-body h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 1rem; margin-top: 1.5rem; color: #334155; }
+      .markdown-body h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.75rem; margin-top: 1.25rem; }
+      .markdown-body p { margin-bottom: 1.25rem; line-height: 1.7; color: #475569; }
+      .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+      .markdown-body ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+      .markdown-body li { margin-bottom: 0.5rem; }
+      .markdown-body blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; margin-left: 0; color: #64748b; background-color: #f8fafc; padding: 1rem; border-radius: 0 0.5rem 0.5rem 0; margin-bottom: 1.25rem; }
+      .markdown-body pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1.5rem; }
+      .markdown-body code { background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.9em; color: #be185d; }
+      .markdown-body pre code { background: transparent; color: inherit; padding: 0; }
+      .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.95rem; }
+      .markdown-body th { background-color: #f1f5f9; font-weight: 600; text-align: left; padding: 0.75rem; border: 1px solid #e2e8f0; }
+      .markdown-body td { padding: 0.75rem; border: 1px solid #e2e8f0; }
+      .markdown-body tr:nth-child(even) { background-color: #f8fafc; }
+
+      /* --- Chat Bubble Markdown Styling --- */
+      .chat-markdown {
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+      /* Remove default margins for cleaner bubbles */
+      .chat-markdown p { margin-bottom: 0.75rem; }
+      .chat-markdown p:last-child { margin-bottom: 0; }
+      .chat-markdown ul, .chat-markdown ol { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+      .chat-markdown ul { list-style: disc; }
+      .chat-markdown ol { list-style: decimal; }
+      .chat-markdown h1, .chat-markdown h2, .chat-markdown h3 { font-weight: 700; margin-top: 1rem; margin-bottom: 0.5rem; }
+      .chat-markdown h1 { font-size: 1.25em; }
+      .chat-markdown h2 { font-size: 1.1em; }
+      .chat-markdown pre { padding: 0.5rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75rem; font-size: 0.85em; }
+      .chat-markdown code { padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-family: monospace; }
+      .chat-markdown table { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; display: block; overflow-x: auto; }
+      .chat-markdown th, .chat-markdown td { padding: 0.4rem; border-width: 1px; border-style: solid; font-size: 0.9em; }
+
+      /* Styles for Model Messages (Light Background) */
+      .chat-markdown-light { color: #1e293b; }
+      .chat-markdown-light a { color: #2563eb; text-decoration: underline; }
+      .chat-markdown-light code { background: #f1f5f9; color: #be185d; }
+      .chat-markdown-light pre { background: #1e293b; color: #e2e8f0; }
+      .chat-markdown-light th, .chat-markdown-light td { border-color: #cbd5e1; }
+      .chat-markdown-light th { background-color: #f1f5f9; font-weight: 600; }
+      .chat-markdown-light tr:nth-child(even) { background-color: #f8fafc; }
+
+      /* Styles for User Messages (Dark Blue Background) */
+      .chat-markdown-dark { color: white; }
+      .chat-markdown-dark a { color: #bfdbfe; text-decoration: underline; }
+      .chat-markdown-dark code { background: rgba(255,255,255,0.2); color: white; }
+      .chat-markdown-dark pre { background: rgba(0,0,0,0.3); color: white; }
+      .chat-markdown-dark th, .chat-markdown-dark td { border-color: rgba(255,255,255,0.3); }
+      .chat-markdown-dark th { background-color: rgba(255,255,255,0.15); font-weight: 600; }
+      .chat-markdown-dark tr:nth-child(even) { background-color: rgba(255,255,255,0.05); }
+
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
+    "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
+    "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
+    "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
+    "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
+    "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
+    "@angular/core": "https://esm.sh/@angular/core@^21.0.6?external=rxjs",
+    "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^21.0.6?external=rxjs",
+    "@angular/compiler": "https://esm.sh/@angular/compiler@^21.0.6?external=rxjs",
+    "@angular/forms": "https://esm.sh/@angular/forms@^21.0.6?external=rxjs",
+    "@angular/common": "https://esm.sh/@angular/common@^21.0.6?external=rxjs",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0?external=rxjs",
+    "marked": "https://esm.sh/marked@12.0.0",
+    "pako": "https://esm.sh/pako@2.1.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-50 text-slate-800 h-screen overflow-hidden">
+    <app-root></app-root>
+  </body>
+</html>
